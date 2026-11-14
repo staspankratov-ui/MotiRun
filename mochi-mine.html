@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Mochi Miner</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+  html,body{width:100%;height:100%;overflow:hidden;background:#1a1420;font-family:-apple-system,"Segoe UI",Roboto,sans-serif}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
+  .hide{display:none!important}
+  .ui{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;background:rgba(10,8,16,.55);z-index:10;overflow:auto}
+  .card{background:#fff;border:4px solid #1f2230;border-radius:28px;padding:20px 22px;box-shadow:0 8px 0 #1f2230;max-width:92vw;margin:12px}
+  h1{font-size:32px;color:#1f2230}
+  h1 span{color:#3cc8e8}
+  p{color:#555;font-size:14px;margin-top:8px;line-height:1.35}
+  .legend{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;text-align:left;font-size:13px;color:#333;margin-top:10px}
+  .big{font-size:50px;font-weight:900;color:#3cc8e8;line-height:1;margin-top:6px}
+  .row{display:flex;gap:16px;justify-content:center;margin:10px 0 2px;color:#1f2230;font-weight:700;flex-wrap:wrap}
+  button{font:inherit;font-size:20px;font-weight:800;border:4px solid #1f2230;border-radius:18px;padding:12px 28px;margin-top:12px;background:#f0a020;color:#fff;box-shadow:0 5px 0 #1f2230;cursor:pointer}
+  button:active{transform:translateY(4px);box-shadow:0 1px 0 #1f2230}
+  button.alt{background:#f48fb1;font-size:16px;padding:9px 20px}
+  button:disabled{background:#bbb;opacity:.7}
+  .shop{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  .shop button{margin:0;font-size:15px;padding:9px 12px;background:#3cc8e8;display:flex;justify-content:space-between;gap:10px;text-align:left}
+  .new{color:#e8457a;font-weight:900}
+  .shop button:disabled{background:#c9c9d1;opacity:.65}
+  .rocks{display:flex;gap:16px;justify-content:center;margin-top:14px}
+  .rock{width:130px;height:130px;border-radius:34px 40px 30px 44px;border:4px solid #1f2230;box-shadow:0 7px 0 #1f2230;background:radial-gradient(circle at 30% 30%,#b3b5c4,#7d7f8c);position:relative;display:flex;align-items:center;justify-content:center;font-size:54px;cursor:pointer;transition:transform .15s}
+  .rock:active{transform:scale(.96)}
+  .rock .sp{position:absolute;font-size:18px;animation:tw 1.2s ease-in-out infinite alternate}
+  @keyframes tw{from{opacity:.3}to{opacity:1}}
+  .rock.hit{animation:shk .12s linear 4}
+  @keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px) rotate(-3deg)}75%{transform:translateX(7px) rotate(3deg)}}
+  .rock.good{background:radial-gradient(circle,#fff6c8,#ffd34a)}
+  .rock.bad{background:radial-gradient(circle,#ffd0dc,#ff6b8a)}
+  .rock.dim{opacity:.55;transform:scale(.9)}
+  .rock .lbl{position:absolute;bottom:-34px;left:-10px;right:-10px;font-size:13px;font-weight:800;color:#1f2230}
+  #bResult{min-height:44px;margin-top:40px;font-size:18px;font-weight:900;color:#1f2230}
+  #hud{position:fixed;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:6px;font-size:17px;font-weight:900;color:#1f2230;pointer-events:none;z-index:3}
+  #hud > div{background:rgba(255,255,255,.9);border:3px solid #1f2230;border-radius:14px;padding:4px 9px;white-space:nowrap}
+  #hDia.done{background:#bdf5c6}
+  #toast{position:fixed;top:22%;left:0;right:0;text-align:center;font-size:28px;font-weight:900;color:#fff;-webkit-text-stroke:2px #1f2230;pointer-events:none;opacity:0;transition:opacity .3s;z-index:4;padding:0 10px}
+  #joyZone{position:fixed;left:0;bottom:0;width:58%;height:45%;z-index:2;touch-action:none}
+  #joy{position:fixed;left:30px;bottom:calc(30px + env(safe-area-inset-bottom));width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.14);border:4px solid rgba(255,255,255,.5);z-index:3;pointer-events:none;transition:opacity .2s;opacity:.7}
+  #joy.on{opacity:1;transition:none}
+  #knob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:rgba(255,255,255,.9);border:4px solid #1f2230;box-shadow:0 4px 0 #1f2230}
+  #pick{position:fixed;right:26px;bottom:calc(36px + env(safe-area-inset-bottom));width:104px;height:104px;border-radius:50%;background:#f0a020;border:4px solid #1f2230;box-shadow:0 6px 0 #1f2230;display:flex;align-items:center;justify-content:center;font-size:48px;z-index:3;touch-action:none}
+  #pick.on{transform:translateY(5px);box-shadow:0 1px 0 #1f2230;background:#ffc04a}
+  .boostBox{margin-top:10px;text-align:center}
+  .boostBox .bt{font-size:12px;font-weight:800;color:#1f2230;margin-bottom:5px}
+  .boostBox .bp{display:inline-block;margin:3px;padding:5px 9px;border:3px solid #1f2230;border-radius:12px;background:#bdf5c6;font-size:13px;font-weight:800;color:#1f2230;cursor:pointer}
+  .boostBox .bp.off{background:#ddd;opacity:.6;text-decoration:line-through}
+  .boostBox .bnone{font-size:12px;color:#888;font-weight:700}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud" class="hide"><div id="hHp">❤❤❤</div><div id="hDia">💎 0/5</div><div>🪙 <span id="hGold">0</span></div><div>⛰ <span id="hLvl">1</span></div></div>
+<div id="toast"></div>
+<div id="joyZone" class="hide"></div>
+<div id="joy" class="hide"><div id="knob"></div></div>
+<div id="pick" class="hide">⛏</div>
+
+<div id="start" class="ui">
+  <div class="card">
+    <h1>MOCHI <span>MINER</span></h1>
+    <p>Копай киркой камни и руды ⛏ В рудах прячутся алмазы 💎 — но не во всех! Собери нужное число алмазов, и откроется люк на следующий уровень.</p>
+    <div class="legend">
+      <div>💎 Алмаз</div><div>🪙 Золото → магазин</div>
+      <div>💣 Бомба — беги!</div><div>🕷 Паук-ловушка</div>
+      <div>☠️ Ядовитый газ</div><div>🦇 Летучие мыши</div>
+    </div>
+    <p>Слева — джойстик, справа — удар киркой. Мышей и пауков тоже можно бить. После каждого уровня — бонус-раунд!</p>
+    <div class="boostBox"></div>
+    <div class="row">🏆 Рекорд: <span id="bestStart">0</span> 💎</div>
+    <button id="playBtn">ИГРАТЬ</button><br>
+    <button class="alt menuBtn">← В меню</button>
+  </div>
+</div>
+
+<div id="bonusUi" class="ui hide">
+  <div class="card">
+    <h1>Бонус-раунд ⛏</h1>
+    <p>Выбери одну руду и ударь киркой!<br>В одной — сокровище, в другой — ловушка.</p>
+    <div class="rocks">
+      <div class="rock" data-i="0"><span class="sp" style="left:18px;top:16px">✨</span><span class="sp" style="right:16px;bottom:22px;animation-delay:.6s">✨</span><span class="ic">🪨</span><span class="lbl"></span></div>
+      <div class="rock" data-i="1"><span class="sp" style="right:18px;top:18px;animation-delay:.3s">✨</span><span class="sp" style="left:16px;bottom:20px;animation-delay:.9s">✨</span><span class="ic">🪨</span><span class="lbl"></span></div>
+    </div>
+    <div id="bResult"></div>
+    <button id="bonusNext" class="hide">В магазин →</button>
+  </div>
+</div>
+
+<div id="shopUi" class="ui hide">
+  <div class="card">
+    <h1>Уровень <span id="sLvl">1</span> пройден! ⛏</h1>
+    <div class="row"><span>💎 <span id="sDia">0</span></span><span>🪙 <span id="sGold">0</span></span></div>
+    <p>Магазин шахтёра:</p>
+    <div class="shop">
+      <button id="bPick"></button>
+      <button id="bLamp"></button>
+      <button id="bHeart"></button>
+      <button id="bHeal"></button>
+    </div>
+    <button id="nextBtn">ГЛУБЖЕ ↓</button>
+  </div>
+</div>
+
+<div id="over" class="ui hide">
+  <div class="card">
+    <h1>Моти устал 🥺</h1>
+    <div class="big"><span id="final">0</span> 💎</div>
+    <div id="newBest" class="new hide">НОВЫЙ РЕКОРД!</div>
+    <div class="row"><span>🏆 <span id="best">0</span></span><span>⛰ Ур. <span id="oLvl">1</span></span></div>
+    <div class="boostBox"></div>
+    <button id="againBtn">ЕЩЁ РАЗ</button><br>
+    <button id="shareBtn" class="alt">Похвастаться 📣</button>
+    <button class="alt menuBtn">← В меню</button>
+  </div>
+</div>
+
+<script>
+(() => {
+const MENU_URL = 'index.html';
+const tg = window.Telegram && Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); try{ tg.setHeaderColor('#1a1420'); tg.setBackgroundColor('#1a1420'); tg.disableVerticalSwipes && tg.disableVerticalSwipes();
+  tg.BackButton.show(); tg.BackButton.onClick(()=>location.href=MENU_URL); }catch(e){} }
+const haptic = t => { try{ const h = tg && tg.HapticFeedback; if(!h) return;
+  t==='hit'?h.notificationOccurred('error'):t==='win'?h.notificationOccurred('success'):h.impactOccurred(t==='heavy'?'heavy':t==='coin'?'medium':'light'); }catch(e){} };
+if(!CanvasRenderingContext2D.prototype.roundRect) CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h){this.rect(x,y,w,h)};
+
+const mochi = new Image(); mochi.src = "data:image/png;base64,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";
+const $ = id => document.getElementById(id);
+const cv = $('c'); let ctx = cv.getContext('2d', { alpha: false });
+let spr = {}, darkS = null, darkR = 0;
+let W, H, DPR, T;
+const isTouch = matchMedia('(pointer:coarse)').matches;
+// ---------- производительность: если кадров мало — снижаем чёткость ----------
+let dprCap = 2, perfAcc = 0, perfN = 0;
+function perfTick(ms){ if (ms > 100 || ms <= 0) return; perfAcc += ms; perfN++;
+  if (perfN >= 120){ const avg = perfAcc/perfN; perfAcc = perfN = 0;
+    if (avg > 20 && dprCap > 1){ dprCap = dprCap > 1.5 ? 1.5 : 1; resize(); } } }
+function resize(){ DPR = Math.min(devicePixelRatio||1, dprCap); spr = {}; darkS = null; W = innerWidth; H = innerHeight;
+  cv.width = W*DPR; cv.height = H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+  T = Math.floor(Math.min(W, H) / 8.5); }
+addEventListener('resize', resize); resize();
+
+const store = { get(){ try{return +localStorage.getItem('mochi_mine_best')||0}catch(e){return 0} }, set(v){ try{localStorage.setItem('mochi_mine_best',v)}catch(e){} } };
+let best = store.get(); $('bestStart').textContent = best;
+
+// ---------- звук ----------
+let ac;
+function beep(f, d=.08, type='square', vol=.06, slide=0){ try{ ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+  const o=ac.createOscillator(), g=ac.createGain(); o.type=type; o.frequency.value=f;
+  if(slide) o.frequency.exponentialRampToValueAtTime(f*slide, ac.currentTime+d);
+  g.gain.setValueAtTime(vol, ac.currentTime); g.gain.exponentialRampToValueAtTime(.001, ac.currentTime+d);
+  o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime+d);}catch(e){} }
+function noise(d=.15, vol=.15){ try{ ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+  const b = ac.createBuffer(1, ac.sampleRate*d, ac.sampleRate), data = b.getChannelData(0);
+  for (let i=0;i<data.length;i++) data[i] = (Math.random()*2-1) * (1 - i/data.length);
+  const s = ac.createBufferSource(), g = ac.createGain(); s.buffer = b; g.gain.value = vol; s.connect(g).connect(ac.destination); s.start(); }catch(e){} }
+const seq = (fs, step=.08, type='square', vol=.06) => fs.forEach((f,i)=>setTimeout(()=>beep(f,step*1.3,type,vol), i*step*1000));
+const sfx = { tink:()=>beep(1200+Math.random()*300,.05,'triangle',.07), crack:()=>noise(.12,.12), swing:()=>beep(300,.06,'sine',.04,.5),
+  dia:()=>seq([1047,1319,1568,2093],.06,'triangle',.08), gold:()=>seq([988,1319],.06), empty:()=>beep(200,.15,'triangle',.08,.7),
+  trap:()=>seq([400,300,200],.1,'sawtooth',.07), boom:()=>noise(.6,.35), hurt:()=>beep(220,.35,'sawtooth',.08,.4),
+  kill:()=>beep(500,.12,'square',.06,.3), open:()=>seq([523,659,784,1047,1319],.09), win:()=>seq([784,988,1175,1568],.1) };
+
+// ---------- тайлы ----------
+// 0 пол, 1 камень, 2 скала (не ломается), 3 руда, 4 золотая жила, 5 люк
+const HP = { 1:2, 3:3, 4:3 };
+let MW, MH, grid, hp, ore, enemies, bombs, gases, parts, texts, exitX, exitY, quota, lvlDia;
+function genLevel(n){
+  MW = Math.min(46, 28 + n*3); MH = Math.min(46, 28 + n*3);
+  grid = Array.from({length:MH}, () => Array(MW).fill(1));
+  hp = Array.from({length:MH}, () => Array(MW).fill(0));
+  ore = {};
+  for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) if (x===0||y===0||x===MW-1||y===MH-1) grid[y][x] = 2;
+  const carve = (x,y) => { if (x>0&&y>0&&x<MW-1&&y<MH-1) grid[y][x] = 0; };
+  // пещеры
+  const sx = 3, sy = Math.floor(MH/2);
+  for (let w=0; w<6+n; w++){
+    let x = w===0 ? sx : 2+Math.floor(Math.random()*(MW-4)), y = w===0 ? sy : 2+Math.floor(Math.random()*(MH-4));
+    for (let s=0; s<160; s++){ carve(x,y); if (Math.random()<.3){ carve(x+1,y); carve(x,y+1); }
+      const d = Math.floor(Math.random()*4); x += [1,-1,0,0][d]; y += [0,0,1,-1][d];
+      x = Math.max(1, Math.min(MW-2, x)); y = Math.max(1, Math.min(MH-2, y)); }
+  }
+  for (let dy=-1;dy<=1;dy++) for (let dx=-1;dx<=1;dx++) carve(sx+dx, sy+dy);
+  // люк — самая дальняя пустая клетка
+  let bd = -1; for (let y=1;y<MH-1;y++) for (let x=1;x<MW-1;x++) if (grid[y][x]===0){ const d=(x-sx)**2+(y-sy)**2; if (d>bd){ bd=d; exitX=x; exitY=y; } }
+  grid[exitY][exitX] = 5;
+  // руды
+  quota = 4 + n*2;
+  const ores = [];
+  for (let y=1;y<MH-1;y++) for (let x=1;x<MW-1;x++) if (grid[y][x]===1){
+    const near = Math.abs(x-sx)+Math.abs(y-sy) < 3; if (near) continue;
+    const r = Math.random();
+    if (r < .075){ grid[y][x] = 3; ores.push([x,y]); }
+    else if (r < .105) grid[y][x] = 4;
+  }
+  const trapP = Math.min(.36, .2 + n*.03);
+  for (const [x,y] of ores){ const r = Math.random(); ore[x+','+y] =
+    r < .4 ? 'dia' : r < .4+trapP*.45 ? 'bomb' : r < .4+trapP*.75 ? 'spider' : r < .4+trapP ? 'gas' : r < .4+trapP+.15 ? 'gold' : 'empty'; }
+  // гарантируем, что алмазов хватает
+  let dias = Object.values(ore).filter(v=>v==='dia').length;
+  for (const k of Object.keys(ore).sort(()=>Math.random()-.5)){ if (dias >= quota + 3) break; if (ore[k]==='empty'||ore[k]==='gold'){ ore[k]='dia'; dias++; } }
+  for (let y=0;y<MH;y++) for (let x=0;x<MW;x++) hp[y][x] = HP[grid[y][x]] || 0;
+  // враги
+  enemies = [];
+  const floors = []; for (let y=1;y<MH-1;y++) for (let x=1;x<MW-1;x++) if (grid[y][x]===0 && (x-sx)**2+(y-sy)**2 > 49) floors.push([x,y]);
+  const nb = 2 + n, ns = n >= 2 ? n - 1 : 0;
+  for (let i=0;i<nb+ns && floors.length;i++){ const [x,y] = floors.splice(Math.floor(Math.random()*floors.length),1)[0]; spawnEnemy(i < nb ? 'bat' : 'slime', x+.5, y+.5); }
+  bombs = []; gases = []; parts = []; texts = []; lvlDia = 0;
+  return [sx+.5, sy+.5];
+}
+function spawnEnemy(type, x, y){
+  const a = Math.random()*6.28;
+  enemies.push({ type, x, y, vx: Math.cos(a), vy: Math.sin(a), hp: type==='bat'?1:2, hurt:0, t: Math.random()*100 });
+}
+const tileAt = (x,y) => (x<0||y<0||x>=MW||y>=MH) ? 2 : grid[y][x];
+const solidT = c => c===1||c===2||c===3||c===4;
+const solidAt = (x,y) => solidT(tileAt(Math.floor(x), Math.floor(y)));
+
+// ---------- состояние ----------
+let state = 'menu', p, cam = {x:0,y:0}, lvl = 1, gold = 0, diaTotal = 0, t = 0, shake = 0;
+let up = { pick:0, lamp:0, maxHp:3 };
+const input = { x:0, y:0, pick:false };
+function newPlayer(x, y){ return { x, y, r:.3, fx:1, fy:0, hp: up.maxHp, inv:0, swing:0, cd:0, slow:0, moving:false }; }
+function startLevel(keepHp){
+  const hpOld = p ? p.hp : up.maxHp;
+  const [sx, sy] = genLevel(lvl); p = newPlayer(sx, sy); if (keepHp) p.hp = Math.min(up.maxHp, hpOld);
+  cam.x = p.x*T; cam.y = p.y*T; state = 'play'; updHud();
+  ['start','shopUi','bonusUi','over'].forEach(id => $(id).classList.add('hide')); $('hud').classList.remove('hide');
+  if (isTouch) ['joyZone','joy','pick'].forEach(id => $(id).classList.remove('hide'));
+  toast(`Шахта ${lvl}: найди ${quota} 💎`);
+}
+function newGame(){ lvl = 1; gold = 0; diaTotal = 0; up = { pick:0, lamp:0, maxHp:3 }; p = null;
+  const used = takeBoosts();
+  if (used.mine_pick) up.pick = 1; if (used.mine_lamp) up.lamp = 1; if (used.mine_heart) up.maxHp = 4; if (used.mine_gold) gold = 30;
+  startLevel(false); renderBoosts(); const bt = boostToast(used); if (bt) setTimeout(()=>toast(bt, 2000), 1700); }
+function updHud(){ $('hHp').textContent = '❤'.repeat(Math.max(0,p.hp)) + '🖤'.repeat(Math.max(0, up.maxHp - p.hp));
+  $('hDia').textContent = `💎 ${lvlDia}/${quota}`; $('hDia').classList.toggle('done', lvlDia >= quota); $('hGold').textContent = gold; $('hLvl').textContent = lvl; }
+let toastT; function toast(s, ms=1500){ const e=$('toast'); e.textContent=s; e.style.opacity=1; clearTimeout(toastT); toastT=setTimeout(()=>e.style.opacity=0, ms); }
+function float(x, y, txt, col='#fff'){ texts.push({ x, y, txt, col, l: 60 }); }
+function chips(x, y, col, n=8, sp=.08){ for (let i=0;i<n;i++){ const a=Math.random()*6.28, s=Math.random()*sp+.02; parts.push({ x, y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, l:25+Math.random()*15, c:col, s: .06+Math.random()*.06 }); } }
+
+function hurt(dmg=1, fromX, fromY){
+  if (p.inv > 0 || state !== 'play') return;
+  p.hp -= dmg; p.inv = 70; shake = 10; sfx.hurt(); haptic('hit'); updHud();
+  if (fromX !== undefined){ const dx = p.x-fromX, dy = p.y-fromY, d = Math.hypot(dx,dy)||1; tryMove(dx/d*.4, 0); tryMove(0, dy/d*.4); }
+  if (p.hp <= 0) gameOver();
+}
+function gameOver(){
+  state = 'over'; ['joyZone','joy','pick'].forEach(id => $(id).classList.add('hide'));
+  const isNew = diaTotal > best; if (isNew){ best = diaTotal; store.set(best); }
+  setTimeout(()=>{ $('final').textContent = diaTotal; $('best').textContent = best; $('oLvl').textContent = lvl; $('bestStart').textContent = best;
+    $('newBest').classList.toggle('hide', !isNew); renderBoosts(); $('over').classList.remove('hide'); }, 800);
+}
+function levelDone(){
+  state = 'shop'; sfx.win(); haptic('win'); input.x = input.y = 0;
+  ['joyZone','joy','pick'].forEach(id => $(id).classList.add('hide'));
+  if (diaTotal > best){ best = diaTotal; store.set(best); }
+  setTimeout(startBonus, 500);
+}
+function openShop(){ $('bonusUi').classList.add('hide'); $('sLvl').textContent = lvl; $('sDia').textContent = diaTotal; renderShop(); updHud(); $('shopUi').classList.remove('hide'); }
+
+// ---------- бонус-раунд ----------
+const GOOD = [
+  { e:'💰', n: () => `Клад! +${10+lvl*4} 🪙`, f: () => { gold += 10 + lvl*4; } },
+  { e:'💎', n: () => 'Жеода! +3 💎', f: () => { diaTotal += 3; } },
+  { e:'❤️', n: () => '+1 сердце навсегда!', f: () => { if (up.maxHp < 7){ up.maxHp++; } p.hp = up.maxHp; } },
+  { e:'⛏', n: () => 'Кирка улучшена бесплатно!', f: () => { if (up.pick < 5) up.pick++; else gold += 20; } },
+  { e:'🔦', n: () => 'Фонарь стал ярче!', f: () => { if (up.lamp < 4) up.lamp++; else gold += 15; } },
+];
+const BAD = [
+  { e:'🪨', n: () => 'Обвал! −1 ❤', f: () => { if (p.hp > 1) p.hp--; else gold = Math.max(0, gold - 5); } },
+  { e:'🐀', n: () => 'Крыса утащила половину золота!', f: () => { gold = Math.floor(gold/2); } },
+  { e:'💣', n: () => 'Бум! −1 ❤ и −3 🪙', f: () => { if (p.hp > 1) p.hp--; gold = Math.max(0, gold - 3); } },
+];
+let bonusSet = null;
+function startBonus(){
+  const good = GOOD[Math.floor(Math.random()*GOOD.length)], bad = BAD[Math.floor(Math.random()*BAD.length)];
+  const goodIdx = Math.random() < .5 ? 0 : 1;
+  bonusSet = { good, bad, goodIdx, done: false };
+  document.querySelectorAll('.rock').forEach(r => { r.className = 'rock'; r.querySelector('.ic').textContent = '🪨'; r.querySelector('.lbl').textContent = ''; });
+  $('bResult').textContent = ''; $('bonusNext').classList.add('hide');
+  $('bonusUi').classList.remove('hide');
+}
+document.querySelectorAll('.rock').forEach(r => r.onclick = () => {
+  if (!bonusSet || bonusSet.done) return; bonusSet.done = true;
+  const i = +r.dataset.i, other = document.querySelector(`.rock[data-i="${1-i}"]`);
+  r.classList.add('hit'); sfx.tink(); haptic('light');
+  setTimeout(()=>{ sfx.tink(); haptic('light'); }, 160); setTimeout(()=>{ sfx.tink(); haptic('light'); }, 320);
+  setTimeout(()=>{
+    sfx.crack(); r.classList.remove('hit');
+    const win = i === bonusSet.goodIdx, res = win ? bonusSet.good : bonusSet.bad, oth = win ? bonusSet.bad : bonusSet.good;
+    const text = res.n(); res.f();
+    r.classList.add(win ? 'good' : 'bad'); r.querySelector('.ic').textContent = res.e;
+    other.classList.add('dim', win ? 'bad' : 'good'); other.querySelector('.ic').textContent = oth.e; other.querySelector('.lbl').textContent = 'тут было: ' + oth.n();
+    $('bResult').textContent = (win ? '🎉 ' : '😵 ') + text;
+    if (win){ sfx.dia(); haptic('win'); } else { sfx.trap(); haptic('hit'); }
+    if (diaTotal > best){ best = diaTotal; store.set(best); }
+    $('bonusNext').classList.remove('hide');
+  }, 520);
+});
+$('bonusNext').onclick = openShop;
+const cost = { pick: () => 8 + up.pick*10, lamp: () => 6 + up.lamp*8, heart: () => 15 + (up.maxHp-3)*10, heal: () => 4 };
+function renderShop(){
+  $('sGold').textContent = gold;
+  $('bPick').innerHTML = `<span>⛏ Кирка ур.${up.pick+2} — копает быстрее</span><span>🪙${cost.pick()}</span>`; $('bPick').disabled = gold < cost.pick() || up.pick >= 5;
+  $('bLamp').innerHTML = `<span>🔦 Фонарь ярче</span><span>🪙${cost.lamp()}</span>`; $('bLamp').disabled = gold < cost.lamp() || up.lamp >= 4;
+  $('bHeart').innerHTML = `<span>❤ +1 сердце</span><span>🪙${cost.heart()}</span>`; $('bHeart').disabled = gold < cost.heart() || up.maxHp >= 7;
+  $('bHeal').innerHTML = `<span>🩹 Вылечиться полностью</span><span>🪙${cost.heal()}</span>`; $('bHeal').disabled = gold < cost.heal() || p.hp >= up.maxHp;
+}
+$('bPick').onclick = () => { gold -= cost.pick(); up.pick++; sfx.gold(); renderShop(); };
+$('bLamp').onclick = () => { gold -= cost.lamp(); up.lamp++; sfx.gold(); renderShop(); };
+$('bHeart').onclick = () => { gold -= cost.heart(); up.maxHp++; p.hp++; sfx.gold(); renderShop(); };
+$('bHeal').onclick = () => { gold -= cost.heal(); p.hp = up.maxHp; sfx.gold(); renderShop(); };
+
+// ---------- движение ----------
+function free(x, y){ const r = p.r; return !solidAt(x-r,y-r) && !solidAt(x+r,y-r) && !solidAt(x-r,y+r) && !solidAt(x+r,y+r); }
+function tryMove(dx, dy){ if (free(p.x+dx, p.y)) p.x += dx; if (free(p.x, p.y+dy)) p.y += dy; }
+
+// ---------- удар киркой ----------
+function target(){
+  const tx = Math.floor(p.x + p.fx*.85), ty = Math.floor(p.y + p.fy*.85);
+  if (solidT(tileAt(tx,ty))) return [tx,ty];
+  // если смотрим по диагонали — пробуем основную ось
+  if (Math.abs(p.fx) > Math.abs(p.fy)){ const x2 = Math.floor(p.x + Math.sign(p.fx)*.85); if (solidT(tileAt(x2, Math.floor(p.y)))) return [x2, Math.floor(p.y)]; }
+  else { const y2 = Math.floor(p.y + Math.sign(p.fy)*.85); if (solidT(tileAt(Math.floor(p.x), y2))) return [Math.floor(p.x), y2]; }
+  return null;
+}
+function swing(){
+  p.swing = 12; p.cd = Math.max(9, 20 - up.pick*2.5); sfx.swing();
+  const dmg = 1 + up.pick*.5;
+  // враги
+  const hx = p.x + p.fx*.7, hy = p.y + p.fy*.7; let hitE = false;
+  for (const e of enemies) if (!e.dead && Math.hypot(e.x-hx, e.y-hy) < .75){
+    e.hp -= dmg; e.hurt = 12; hitE = true; const d = Math.hypot(e.x-p.x, e.y-p.y)||1; e.kx = (e.x-p.x)/d*.25; e.ky = (e.y-p.y)/d*.25;
+    if (e.hp <= 0){ e.dead = 1; sfx.kill(); chips(e.x, e.y, e.type==='bat'?'#7a5cff':e.type==='slime'?'#6be07a':'#333', 14, .1);
+      const g = e.type==='spider' ? 3 : e.type==='slime' ? 2 : 1; gold += g; float(e.x, e.y, `+${g} 🪙`, '#ffd34a'); updHud(); haptic('coin'); }
+    else { sfx.tink(); haptic('light'); }
+  }
+  if (hitE) return;
+  const tg_ = target(); if (!tg_) return;
+  const [x, y] = tg_, c = grid[y][x];
+  if (c === 2){ sfx.tink(); chips(x+.5, y+.5, '#555', 4); return; }
+  hp[y][x] -= dmg; sfx.tink(); haptic('light'); shake = 2;
+  chips(x+.5 - p.fx*.4, y+.5 - p.fy*.4, c===4 ? '#ffd34a' : c===3 ? '#9be7ff' : '#9a9cab', 6);
+  if (hp[y][x] <= 0) breakTile(x, y, c);
+}
+function breakTile(x, y, c){
+  grid[y][x] = 0; sfx.crack(); haptic('coin'); shake = 4;
+  chips(x+.5, y+.5, '#8b8d99', 14, .12);
+  const cx = x+.5, cy = y+.5;
+  if (c === 1 && Math.random() < .06){ gold += 1; float(cx, cy, '+1 🪙', '#ffd34a'); sfx.gold(); }
+  if (c === 4){ const g = 2 + Math.floor(Math.random()*3); gold += g; float(cx, cy, `+${g} 🪙`, '#ffd34a'); sfx.gold(); chips(cx, cy, '#ffd34a', 12); }
+  if (c === 3){
+    const k = ore[x+','+y];
+    if (k === 'dia'){ lvlDia++; diaTotal++; float(cx, cy, '+1 💎', '#7fe8ff'); sfx.dia(); haptic('win'); chips(cx, cy, '#7fe8ff', 20, .14);
+      if (lvlDia === quota){ setTimeout(()=>{ sfx.open(); toast('Люк открыт! Ищи стрелку ➜', 2200); }, 300); } }
+    else if (k === 'gold'){ const g = 4 + Math.floor(Math.random()*4); gold += g; float(cx, cy, `+${g} 🪙`, '#ffd34a'); sfx.gold(); }
+    else if (k === 'bomb'){ bombs.push({ x: cx, y: cy, fuse: 110 }); sfx.trap(); haptic('hit'); toast('💣 Бомба! Беги!', 1200); }
+    else if (k === 'spider'){ spawnEnemy('spider', cx, cy); sfx.trap(); haptic('hit'); toast('🕷 Паук!', 1000); }
+    else if (k === 'gas'){ gases.push({ x: cx, y: cy, l: 360 }); sfx.trap(); haptic('hit'); toast('☠️ Ядовитый газ!', 1000); }
+    else { float(cx, cy, 'пусто…', '#ccc'); sfx.empty(); }
+  }
+  updHud();
+}
+function explode(b){
+  sfx.boom(); haptic('heavy'); shake = 22;
+  const R = 1.7;
+  for (let y=Math.floor(b.y-R); y<=Math.floor(b.y+R); y++) for (let x=Math.floor(b.x-R); x<=Math.floor(b.x+R); x++){
+    if (Math.hypot(x+.5-b.x, y+.5-b.y) > R) continue; const c = tileAt(x,y);
+    if (c === 1 || c === 4){ grid[y][x] = 0; chips(x+.5, y+.5, '#8b8d99', 6, .15); }
+    // руды взрыв не трогает — сюрприз остаётся внутри
+  }
+  for (let i=0;i<40;i++){ const a=Math.random()*6.28, s=Math.random()*.2+.05; parts.push({ x:b.x, y:b.y, vx:Math.cos(a)*s, vy:Math.sin(a)*s, l:30, c:['#ff7a2a','#ffd34a','#555'][i%3], s:.1+Math.random()*.1 }); }
+  for (const e of enemies) if (!e.dead && Math.hypot(e.x-b.x, e.y-b.y) < R+.3){ e.dead = 1; chips(e.x, e.y, '#333', 10); }
+  if (Math.hypot(p.x-b.x, p.y-b.y) < R+.3){ p.inv = 0; hurt(1, b.x, b.y); }
+}
+
+// ---------- обновление ----------
+function update(dt){
+  if (state !== 'play') return;
+  // ввод
+  let ix = input.x, iy = input.y; const m = Math.hypot(ix, iy);
+  if (m > 1){ ix /= m; iy /= m; }
+  p.moving = m > .15;
+  if (p.moving){ const n = Math.hypot(ix, iy); p.fx = ix/n; p.fy = iy/n;
+    const sp = .075 * (p.slow > 0 ? .5 : 1);
+    tryMove(ix*sp*dt, iy*sp*dt); }
+  if (p.cd > 0) p.cd -= dt; if (p.swing > 0) p.swing -= dt; if (p.inv > 0) p.inv -= dt; if (p.slow > 0) p.slow -= dt;
+  if (input.pick && p.cd <= 0) swing();
+
+  // люк
+  if (lvlDia >= quota && Math.floor(p.x) === exitX && Math.floor(p.y) === exitY) return levelDone();
+
+  // бомбы
+  for (const b of bombs){ b.fuse -= dt; if (b.fuse <= 0 && !b.done){ b.done = true; explode(b); } }
+  bombs = bombs.filter(b => !b.done);
+  // газ
+  for (const g of gases){ g.l -= dt; if (Math.hypot(p.x-g.x, p.y-g.y) < 1.8){ p.slow = 30; g.tick = (g.tick||0) + dt; if (g.tick > 100){ g.tick = 0; hurt(1); } } }
+  gases = gases.filter(g => g.l > 0);
+
+  // враги
+  for (const e of enemies){
+    if (e.dead) continue;
+    e.t += dt; if (e.hurt > 0) e.hurt -= dt;
+    const dx = p.x-e.x, dy = p.y-e.y, d = Math.hypot(dx,dy);
+    let sp;
+    if (e.type === 'bat'){ sp = .035; if (Math.random() < .015*dt){ const a = Math.random()*6.28; e.vx = Math.cos(a); e.vy = Math.sin(a); }
+      if (d < 4 && Math.random() < .02*dt){ e.vx = dx/d; e.vy = dy/d; } }
+    else if (e.type === 'slime'){ sp = .018; if (d < 6){ e.vx = dx/d; e.vy = dy/d; } else if (Math.random() < .01*dt){ const a=Math.random()*6.28; e.vx=Math.cos(a); e.vy=Math.sin(a); } }
+    else { sp = .045; if (d < 9){ e.vx = dx/d; e.vy = dy/d; } }
+    if (e.kx){ e.x += e.kx; e.y += e.ky; e.kx *= .7; e.ky *= .7; if (Math.abs(e.kx) < .01) e.kx = 0; if (solidAt(e.x, e.y)){ e.x -= e.kx*2; e.y -= e.ky*2; } }
+    const nx = e.x + e.vx*sp*dt, ny = e.y + e.vy*sp*dt;
+    if (!solidAt(nx, e.y)) e.x = nx; else e.vx *= -1;
+    if (!solidAt(e.x, ny)) e.y = ny; else e.vy *= -1;
+    if (d < .62) hurt(1, e.x, e.y);
+  }
+  enemies = enemies.filter(e => !e.dead);
+
+  for (const q of parts){ q.x += q.vx*dt; q.y += q.vy*dt; q.vx *= .93; q.vy *= .93; q.l -= dt; }
+  parts = parts.filter(q => q.l > 0);
+  for (const q of texts){ q.y -= .015*dt; q.l -= dt; }
+  texts = texts.filter(q => q.l > 0);
+
+  cam.x += (p.x*T - cam.x) * .15 * dt; cam.y += (p.y*T - cam.y) * .15 * dt;
+}
+
+// ---------- рисование ----------
+const ink = '#1f2230';
+const hash = (x, y) => ((x*73856093) ^ (y*19349663)) >>> 0;
+// готовые картинки тайлов (рисуются один раз, потом просто копируются)
+function tileSprite(c, v){
+  const key = c + '_' + v; let s = spr[key]; if (s) return s;
+  s = document.createElement('canvas'); s.width = s.height = Math.ceil((T+1)*DPR);
+  const o = s.getContext('2d'); o.scale(DPR, DPR);
+  const saved = ctx; ctx = o; drawTileBase(c, hash(v*7+3, c*13+5), v, 0, 0); ctx = saved;
+  return spr[key] = s;
+}
+function drawTile(c, x, y, px, py){
+  const h = hash(x, y), v = h % 6;
+  ctx.drawImage(tileSprite(c === 5 ? 0 : c, v), px, py, T+1, T+1);
+  if (c === 5) drawHatch(px, py);
+  if (c === 3){
+    for (let i=0;i<4;i++){ const ox = ((h>>(i*3))%7)/8 + .12, oy = ((h>>(i*3+2))%6)/7 + .15;
+      const tw = .6 + .4*Math.sin(t*.08 + i*1.7 + x);
+      ctx.fillStyle = `rgba(150,230,255,${tw})`; ctx.save(); ctx.translate(px+T*Math.min(.85,ox), py+T*Math.min(.8,oy)); ctx.rotate(.785);
+      ctx.fillRect(-T*.06, -T*.06, T*.12, T*.12); ctx.restore(); }
+  }
+  const max = HP[c];
+  if (max && hp[y][x] < max){ const k = 1 - hp[y][x]/max; ctx.strokeStyle = ink; ctx.lineWidth = Math.max(2, T*.05); ctx.beginPath();
+    ctx.moveTo(px+T*.5, py+T*.45); ctx.lineTo(px+T*.3, py+T*(.45-.3*k)); ctx.moveTo(px+T*.5, py+T*.45); ctx.lineTo(px+T*(.5+.35*k), py+T*.3);
+    if (k > .4){ ctx.moveTo(px+T*.5, py+T*.45); ctx.lineTo(px+T*.42, py+T*.8); ctx.moveTo(px+T*.5, py+T*.45); ctx.lineTo(px+T*.8, py+T*.62); } ctx.stroke(); }
+}
+function drawTileBase(c, h, v, px, py){
+  if (c === 0){
+    ctx.fillStyle = v%2 ? '#3a2b26' : '#372823'; ctx.fillRect(px, py, T+1, T+1);
+    ctx.fillStyle = '#4a3730'; if (v%2===0){ ctx.beginPath(); ctx.arc(px+T*((h%7)/8+.1), py+T*((h%5)/6+.1), T*.06, 0, 7); ctx.fill(); }
+    return;
+  }
+  if (c === 2){ ctx.fillStyle = '#211a24'; ctx.fillRect(px, py, T+1, T+1); ctx.fillStyle = '#2c2330'; ctx.fillRect(px+T*.1, py+T*.1, T*.35, T*.3); return; }
+  // камень / руда / жила
+  ctx.fillStyle = '#6e6f7d'; ctx.fillRect(px, py, T+1, T+1);
+  ctx.fillStyle = '#878998'; ctx.beginPath(); ctx.roundRect(px+T*.06, py+T*.06, T*.88, T*.8, T*.14); ctx.fill();
+  ctx.fillStyle = '#9fa1b0'; ctx.fillRect(px+T*.14, py+T*.12, T*.4, T*.1);
+  ctx.strokeStyle = '#5c5d6a'; ctx.lineWidth = Math.max(1.5, T*.035);
+  ctx.beginPath(); ctx.moveTo(px+T*(.2+(h%4)/10), py+T*.5); ctx.lineTo(px+T*.5, py+T*.62); ctx.lineTo(px+T*.66, py+T*.55); ctx.stroke();
+  if (c === 3){
+    ctx.fillStyle = 'rgba(160,120,255,.25)'; ctx.fillRect(px+T*.06, py+T*.06, T*.88, T*.8);
+  } else if (c === 4){
+    ctx.fillStyle = '#ffd34a'; ctx.strokeStyle = '#a07a10'; ctx.lineWidth = 1.5;
+    for (let i=0;i<5;i++){ const ox = ((h>>(i*3))%7)/8 + .1, oy = ((h>>(i*3+1))%6)/7 + .12;
+      ctx.beginPath(); ctx.arc(px+T*Math.min(.85,ox), py+T*Math.min(.8,oy), T*.07, 0, 7); ctx.fill(); ctx.stroke(); }
+  }
+  ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1; ctx.strokeRect(px+.5, py+.5, T, T);
+}
+function drawHatch(px, py){
+  const open = lvlDia >= quota;
+  ctx.fillStyle = open ? '#0b0810' : '#7a5232'; ctx.strokeStyle = ink; ctx.lineWidth = Math.max(2, T*.05);
+  ctx.beginPath(); ctx.roundRect(px+T*.1, py+T*.1, T*.8, T*.8, T*.12); ctx.fill(); ctx.stroke();
+  if (open){ ctx.strokeStyle = '#c98a55'; ctx.lineWidth = T*.07; ctx.beginPath(); ctx.moveTo(px+T*.32, py+T*.15); ctx.lineTo(px+T*.32, py+T*.85); ctx.moveTo(px+T*.68, py+T*.15); ctx.lineTo(px+T*.68, py+T*.85);
+    for (let i=0;i<3;i++){ ctx.moveTo(px+T*.32, py+T*(.3+i*.22)); ctx.lineTo(px+T*.68, py+T*(.3+i*.22)); } ctx.stroke();
+    ctx.fillStyle = `rgba(127,232,255,${.25+.2*Math.sin(t*.1)})`; ctx.fillRect(px, py, T, T); }
+  else { ctx.strokeStyle = '#5a3a20'; ctx.lineWidth = 2; for (let i=1;i<4;i++){ ctx.beginPath(); ctx.moveTo(px+T*.1, py+T*(.1+i*.2)); ctx.lineTo(px+T*.9, py+T*(.1+i*.2)); ctx.stroke(); }
+    ctx.font = `${T*.38}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('🔒', px+T/2, py+T/2); }
+}
+function drawEnemy(e, sx, sy){
+  ctx.save(); ctx.translate(sx, sy);
+  if (e.hurt > 0) ctx.globalAlpha = .6 + .4*Math.sin(e.hurt);
+  ctx.strokeStyle = ink; ctx.lineWidth = Math.max(2, T*.05);
+  if (e.type === 'bat'){
+    const f = Math.sin(e.t*.4)*.5;
+    ctx.fillStyle = '#7a5cff';
+    for (const s of [-1,1]){ ctx.beginPath(); ctx.moveTo(0,0); ctx.quadraticCurveTo(s*T*.35, -T*(.3+f*.3), s*T*.48, -T*.02); ctx.quadraticCurveTo(s*T*.3, T*.05, s*T*.2, T*.12); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(0, 0, T*.17, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffd34a'; ctx.beginPath(); ctx.arc(-T*.06, -T*.02, T*.04, 0, 7); ctx.arc(T*.06, -T*.02, T*.04, 0, 7); ctx.fill();
+  } else if (e.type === 'slime'){
+    const sq = 1 + Math.sin(e.t*.15)*.1;
+    ctx.scale(1/sq, sq); ctx.fillStyle = '#6be07a';
+    ctx.beginPath(); ctx.moveTo(-T*.3, T*.2); ctx.quadraticCurveTo(-T*.32, -T*.3, 0, -T*.3); ctx.quadraticCurveTo(T*.32, -T*.3, T*.3, T*.2); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(-T*.1, -T*.05, T*.045, 0, 7); ctx.arc(T*.1, -T*.05, T*.045, 0, 7); ctx.fill();
+  } else {
+    ctx.fillStyle = '#2b2333';
+    for (let i=0;i<4;i++) for (const s of [-1,1]){ const a = (i-1.5)*.45 + Math.sin(e.t*.5+i)*.15;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(s*Math.cos(a)*T*.32, Math.sin(a)*T*.3 - T*.05); ctx.lineTo(s*Math.cos(a)*T*.45, Math.sin(a)*T*.3 + T*.1); ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(0, 0, T*.2, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ff4a6a'; for (const ex of [-.07,.07]){ ctx.beginPath(); ctx.arc(T*ex, -T*.06, T*.035, 0, 7); ctx.fill(); }
+  }
+  ctx.restore();
+}
+function drawPickaxe(sx, sy){
+  const base = Math.atan2(p.fy, p.fx), sw = p.swing > 0 ? (p.swing/12) : 0;
+  const side = p.fx >= 0 ? 1 : -1;
+  const a = base - side*(.9 - sw*1.9);
+  ctx.save(); ctx.translate(sx, sy); ctx.rotate(a);
+  ctx.fillStyle = '#9b6a3c'; ctx.strokeStyle = ink; ctx.lineWidth = Math.max(1.5, T*.03);
+  ctx.beginPath(); ctx.roundRect(T*.12, -T*.04, T*.48, T*.08, T*.03); ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = ink; ctx.lineWidth = T*.13; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(T*.38, 0, T*.26, -.7, .7); ctx.stroke();
+  ctx.strokeStyle = up.pick >= 3 ? '#7fe8ff' : up.pick >= 1 ? '#ffd34a' : '#b9bcc8'; ctx.lineWidth = T*.07;
+  ctx.beginPath(); ctx.arc(T*.38, 0, T*.26, -.7, .7); ctx.stroke();
+  ctx.restore();
+}
+function drawMochi(sx, sy){
+  if (p.inv > 0 && Math.floor(p.inv/5) % 2) return;
+  const bob = p.moving ? Math.abs(Math.sin(t*.3))*T*.06 : 0, s = T*.95;
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.beginPath(); ctx.ellipse(sx, sy + T*.33, T*.3, T*.09, 0, 0, 7); ctx.fill();
+  const behind = p.fy < -.5;
+  if (behind) drawPickaxe(sx, sy);
+  ctx.save(); ctx.translate(sx, sy - bob); ctx.scale(p.fx < -.1 ? -1 : 1, 1);
+  if (mochi.complete) ctx.drawImage(mochi, -s/2, -s*.62, s, s);
+  // шахтёрская каска с фонариком
+  ctx.fillStyle = '#ffc93c'; ctx.strokeStyle = ink; ctx.lineWidth = Math.max(2, T*.04);
+  ctx.beginPath(); ctx.ellipse(0, -s*.38, s*.36, s*.18, 0, Math.PI, 0); ctx.fill(); ctx.stroke();
+  ctx.fillRect(-s*.42, -s*.39, s*.84, s*.06); ctx.strokeRect(-s*.42, -s*.39, s*.84, s*.06);
+  ctx.fillStyle = '#fff6b0'; ctx.beginPath(); ctx.arc(0, -s*.47, s*.07, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  if (!behind) drawPickaxe(sx, sy);
+}
+function draw(){
+  ctx.fillStyle = '#120d16'; ctx.fillRect(0, 0, W, H);
+  if (!grid || !p) return;
+  ctx.save();
+  if (shake > 0){ ctx.translate((Math.random()-.5)*shake, (Math.random()-.5)*shake); shake *= .86; if (shake < .5) shake = 0; }
+  const ox = Math.round(W/2 - cam.x), oy = Math.round(H*.42 - cam.y);
+  const x0 = Math.max(0, Math.floor(-ox/T)), x1 = Math.min(MW, Math.ceil((W-ox)/T)), y0 = Math.max(0, Math.floor(-oy/T)), y1 = Math.min(MH, Math.ceil((H-oy)/T));
+  for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) drawTile(grid[y][x], x, y, ox + x*T, oy + y*T);
+  // цель удара
+  const tg_ = state === 'play' && target();
+  if (tg_ && grid[tg_[1]][tg_[0]] !== 2){ ctx.strokeStyle = `rgba(255,255,255,${.5+.3*Math.sin(t*.2)})`; ctx.lineWidth = 3; ctx.setLineDash([6,5]);
+    ctx.strokeRect(ox + tg_[0]*T + 3, oy + tg_[1]*T + 3, T-6, T-6); ctx.setLineDash([]); }
+  // газ
+  for (const g of gases){ const a = Math.min(1, g.l/60);
+    for (let i=0;i<6;i++){ const ang = t*.02 + i, rr = 1.1 + Math.sin(t*.05+i)*.3;
+      ctx.fillStyle = `rgba(120,230,90,${.18*a})`; ctx.beginPath(); ctx.arc(ox + (g.x + Math.cos(ang)*rr*.6)*T, oy + (g.y + Math.sin(ang)*rr*.6)*T, T*rr*.7, 0, 7); ctx.fill(); } }
+  // бомбы
+  for (const b of bombs){ const bx = ox + b.x*T, by = oy + b.y*T, fl = Math.floor(b.fuse/ (b.fuse < 40 ? 4 : 10)) % 2;
+    ctx.fillStyle = 'rgba(255,60,60,.15)'; ctx.beginPath(); ctx.arc(bx, by, T*1.7, 0, 7); ctx.fill();
+    ctx.fillStyle = fl ? '#ff4a4a' : '#2b2333'; ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(bx, by, T*.25, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = '#c98a55'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(bx+T*.12, by-T*.2); ctx.quadraticCurveTo(bx+T*.3, by-T*.4, bx+T*.2, by-T*.45); ctx.stroke();
+    ctx.fillStyle = '#ffd34a'; ctx.beginPath(); ctx.arc(bx+T*.2, by-T*.45, T*.06 + Math.random()*T*.04, 0, 7); ctx.fill(); }
+  for (const e of enemies) drawEnemy(e, ox + e.x*T, oy + e.y*T);
+  drawMochi(ox + p.x*T, oy + p.y*T);
+  for (const q of parts){ ctx.globalAlpha = Math.min(1, q.l/20); ctx.fillStyle = q.c; ctx.fillRect(ox + q.x*T - q.s*T/2, oy + q.y*T - q.s*T/2, q.s*T, q.s*T); }
+  ctx.globalAlpha = 1;
+  // темнота и фонарь
+  const lx = Math.round(ox + p.x*T), ly = Math.round(oy + p.y*T), R = Math.round(T*(3.6 + up.lamp*.9));
+  if (!darkS || darkR !== R){ darkR = R; darkS = document.createElement('canvas'); darkS.width = darkS.height = R*2;
+    const d = darkS.getContext('2d'), g = d.createRadialGradient(R, R, R*.5, R, R, R);
+    g.addColorStop(0, 'rgba(10,6,14,0)'); g.addColorStop(1, 'rgba(10,6,14,.9)'); d.fillStyle = g; d.fillRect(0, 0, R*2, R*2); }
+  ctx.drawImage(darkS, lx - R, ly - R);
+  ctx.fillStyle = 'rgba(10,6,14,.9)';
+  ctx.fillRect(-30, -30, W+60, ly - R + 30); ctx.fillRect(-30, ly + R, W+60, H - ly - R + 30);
+  ctx.fillRect(-30, ly - R, lx - R + 30, R*2); ctx.fillRect(lx + R, ly - R, W - lx - R + 30, R*2);
+  // руды слегка мерцают в темноте
+  for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) if (grid[y][x] === 3){
+    const d = Math.hypot(x+.5-p.x, y+.5-p.y)*T; if (d < R*.8) continue;
+    const tw = .25 + .25*Math.sin(t*.07 + x*3 + y); ctx.fillStyle = `rgba(150,230,255,${tw})`;
+    ctx.save(); ctx.translate(ox + (x+.5)*T, oy + (y+.45)*T); ctx.rotate(.785); ctx.fillRect(-T*.05, -T*.05, T*.1, T*.1); ctx.restore(); }
+  // тексты
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `900 ${T*.36}px sans-serif`;
+  for (const q of texts){ ctx.globalAlpha = Math.min(1, q.l/20); ctx.lineWidth = 4; ctx.strokeStyle = ink; ctx.strokeText(q.txt, ox + q.x*T, oy + q.y*T); ctx.fillStyle = q.col; ctx.fillText(q.txt, ox + q.x*T, oy + q.y*T); }
+  ctx.globalAlpha = 1;
+  // стрелка к люку
+  if (lvlDia >= quota && state === 'play'){
+    const ex = ox + (exitX+.5)*T, ey = oy + (exitY+.5)*T;
+    if (ex < 0 || ex > W || ey < 0 || ey > H){
+      const a = Math.atan2(ey - ly, ex - lx), rr = Math.min(W, H)*.36;
+      ctx.save(); ctx.translate(lx + Math.cos(a)*rr, ly + Math.sin(a)*rr); ctx.rotate(a);
+      ctx.fillStyle = '#7fe8ff'; ctx.strokeStyle = ink; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(T*.4, 0); ctx.lineTo(-T*.2, -T*.28); ctx.lineTo(-T*.08, 0); ctx.lineTo(-T*.2, T*.28); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+    }
+  }
+  ctx.restore();
+  if (p.slow > 0){ ctx.fillStyle = 'rgba(100,220,80,.12)'; ctx.fillRect(0,0,W,H); }
+  if (p.inv > 60){ ctx.fillStyle = 'rgba(255,40,60,.18)'; ctx.fillRect(0,0,W,H); }
+}
+
+// ---------- цикл ----------
+let last = performance.now();
+function loop(now){ perfTick(now-last); const dt = Math.min(2, (now-last)/16.67); last = now; t += dt; update(dt); draw(); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+
+// ---------- бонусы из Mochi Casino ----------
+const MYB = {"mine_pick": {"e": "⛏", "n": "Кирка ур.2", "d": "Начнёшь с улучшенной киркой", "p": 300}, "mine_lamp": {"e": "🔦", "n": "Яркий фонарь", "d": "Видно дальше с самого начала", "p": 150}, "mine_heart": {"e": "❤️", "n": "+1 сердце", "d": "4 сердца вместо 3", "p": 250}, "mine_gold": {"e": "🪙", "n": "+30 золота", "d": "Сразу на покупки в магазине шахтёра", "p": 200}};
+function getBoosts(){ try{ return JSON.parse(localStorage.getItem('mochi_boosts')) || {}; }catch(e){ return {}; } }
+function setBoosts(b){ try{ localStorage.setItem('mochi_boosts', JSON.stringify(b)); }catch(e){} }
+const boostOff = {};
+function renderBoosts(){
+  const b = getBoosts(), own = Object.keys(MYB).filter(k => b[k] > 0);
+  document.querySelectorAll('.boostBox').forEach(el => {
+    if (!own.length){ el.innerHTML = '<div class="bnone">🎰 Бонусы для этой игры можно купить в Mochi Casino</div>'; return; }
+    el.innerHTML = '<div class="bt">🎰 Бонусы из казино — нажми, чтобы выключить:</div>' + own.map(k => `<span class="bp ${boostOff[k] ? 'off' : ''}" data-k="${k}">${MYB[k].e} ${MYB[k].n} ×${b[k]}</span>`).join('');
+    el.querySelectorAll('.bp').forEach(s => s.onclick = () => { boostOff[s.dataset.k] = !boostOff[s.dataset.k]; renderBoosts(); });
+  });
+}
+function takeBoosts(){ const b = getBoosts(), used = {}; for (const k in MYB) if (b[k] > 0 && !boostOff[k]){ b[k]--; used[k] = 1; } setBoosts(b); return used; }
+function boostToast(used){ const n = Object.keys(used).map(k => MYB[k].e).join(' '); return n ? '🎰 Бонусы: ' + n : ''; }
+renderBoosts();
+
+// ---------- джойстик ----------
+const joy = $('joy'), knob = $('knob'), zone = $('joyZone'); let joyId = null, jcx = 0, jcy = 0;
+const JR = 50;
+function joyPos(){ const r = joy.getBoundingClientRect(); jcx = r.left + r.width/2; jcy = r.top + r.height/2; }
+zone.addEventListener('pointerdown', e => { e.preventDefault(); if (joyId !== null) return; joyId = e.pointerId; try{ zone.setPointerCapture(e.pointerId); }catch(_){}
+  joy.style.left = (e.clientX - 65) + 'px'; joy.style.top = (e.clientY - 65) + 'px'; joy.style.bottom = 'auto'; joy.classList.add('on'); jcx = e.clientX; jcy = e.clientY; moveKnob(e); });
+zone.addEventListener('pointermove', e => { if (e.pointerId === joyId) moveKnob(e); });
+const joyEnd = e => { if (e.pointerId !== joyId) return; joyId = null; input.x = input.y = 0; knob.style.transform = '';
+  joy.classList.remove('on'); joy.style.left = '30px'; joy.style.top = ''; joy.style.bottom = ''; };
+zone.addEventListener('pointerup', joyEnd); zone.addEventListener('pointercancel', joyEnd);
+function moveKnob(e){ let dx = e.clientX - jcx, dy = e.clientY - jcy; const d = Math.hypot(dx, dy); if (d > JR){ dx *= JR/d; dy *= JR/d; }
+  knob.style.transform = `translate(${dx}px,${dy}px)`; input.x = dx/JR; input.y = dy/JR; }
+const pick = $('pick');
+pick.addEventListener('pointerdown', e => { e.preventDefault(); input.pick = true; pick.classList.add('on'); try{ pick.setPointerCapture(e.pointerId); }catch(_){} });
+const pickEnd = () => { input.pick = false; pick.classList.remove('on'); };
+pick.addEventListener('pointerup', pickEnd); pick.addEventListener('pointercancel', pickEnd); pick.addEventListener('lostpointercapture', pickEnd);
+pick.addEventListener('contextmenu', e => e.preventDefault());
+// клавиатура
+const kd = {};
+function keyInput(){ input.x = (kd.r?1:0) - (kd.l?1:0); input.y = (kd.d?1:0) - (kd.u?1:0); }
+const km = { ArrowLeft:'l', KeyA:'l', ArrowRight:'r', KeyD:'r', ArrowUp:'u', KeyW:'u', ArrowDown:'d', KeyS:'d' };
+addEventListener('keydown', e => { if (km[e.code]){ e.preventDefault(); kd[km[e.code]] = 1; keyInput(); } if (e.code === 'Space'){ e.preventDefault(); input.pick = true; } });
+addEventListener('keyup', e => { if (km[e.code]){ kd[km[e.code]] = 0; keyInput(); } if (e.code === 'Space') input.pick = false; });
+
+$('playBtn').onclick = newGame; $('againBtn').onclick = newGame;
+$('nextBtn').onclick = () => { lvl++; startLevel(true); };
+document.querySelectorAll('.menuBtn').forEach(b => b.onclick = () => location.href = MENU_URL);
+$('shareBtn').onclick = () => {
+  const url = 'https://t.me/share/url?url=' + encodeURIComponent(location.href.replace(/[^/]*$/, '')) + '&text=' + encodeURIComponent(`Я добыл ${diaTotal} 💎 и спустился на ${lvl} уровень в Mochi Miner ⛏ Сможешь больше?`);
+  tg && tg.openTelegramLink ? tg.openTelegramLink(url) : window.open(url, '_blank');
+};
+})();
+</script>
+</body>
+</html>
